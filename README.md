@@ -1,4 +1,4 @@
-![a](https://repository-images.githubusercontent.com/1230283309/50e4a5c7-bb56-4e68-b3af-27028e2a80d1)
+![a](https://repository-images.githubusercontent.com/1230283309/5d4e9f2b-7d93-41ca-b640-d3e3aca1f959)
 
 > made by [lil2kki](https://scriptblox.com/u/lil2kki) and tested on **[xeno](https://discord.gg/xe-no)**
 
