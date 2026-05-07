@@ -1,18 +1,4 @@
--- sound-replacer by lil2kki
--- config: sound-replacer/{placeId}.txt
---
--- format:
---   [name] {sourceId} - {file|url|rbxassetid}
---   name is ignored, just for your info
---
--- examples:
---   [lobby music]    107720742914927 - sound-replacer/lobby.mp3
---   [cream theme]    113685572917620 - https://example.com/cream.mp3
---   [round music]    135647549254666 - rbxassetid://1234567890
---
--- api:
---   SoundReplacer.add(id, source)        add replacement at runtime
---   SoundReplacer.remove(id)             remove replacement
+-- sound-replacer by lil2kki :3
 
 local ROOT    = "sound-replacer"
 local CFGPATH = ROOT .. "/" .. tostring(game.PlaceId) .. ".txt"
@@ -53,38 +39,59 @@ local function resolve(source)
     return nil
 end
 
--- parse config
 local function parse()
     if not isfolder(ROOT) then makefolder(ROOT) end
 
     if not isfile(CFGPATH) then
-        writefile(CFGPATH,
-            "-- sound-replacer config for place " .. tostring(game.PlaceId) .. "\n" ..
-			"--\n" ..
-            "-- format:\n" ..
-            "--   [name] {sourceId} - {file|url|rbxassetid}\n" ..
-            "--   name is ignored, just for your info\n" ..
-            "--\n" ..
-            "-- examples:\n" ..
-            "--   [lobby music]    107720742914927 - sound-replacer/lobby.mp3\n" ..
-            "--   [cream theme]    113685572917620 - https://example.com/cream.mp3\n" ..
-            "--   [round music]    135647549254666 - rbxassetid://1234567890\n"
-        )
-        log("created empty config: " .. CFGPATH)
-        return {}
+        local defaultConfig = [[-- sound-replacer config for place ]] .. tostring(game.PlaceId) .. [[
+--
+-- ========== SETTINGS ==========
+Enable full descendants scan = false
+Full descendants scan at child = 
+Enable log file = false
+-- ===============================
+--
+-- format:
+--   [name] {sourceId} - {file|url|rbxassetid}
+--   name is ignored, just for your info
+--
+-- examples:
+--   [lobby music]    107720742914927 - sound-replacer/lobby.mp3
+--   [cream theme]    113685572917620 - https://example.com/cream.mp3
+--   [round music]    135647549254666 - rbxassetid://1234567890
+]]
+        writefile(CFGPATH, defaultConfig)
+        log("created config with default settings: " .. CFGPATH)
+        -- Return empty replacements and default settings
+        return {}, {
+            ["Enable full descendants scan"] = "false",
+            ["Full descendants scan at child"] = "",
+            ["Enable log file"] = "false",
+        }
     end
 
-    local out = {}
     local raw = readfile(CFGPATH)
+    local replacements = {}
+    local settings = {}
 
     for line in raw:gmatch("[^\n]+") do
+        if line:match("^%s*%-%-.*=.*") then
+            local settingLine = line:match("^%s*%-%-%s*(.-)%s*$") or ""
+            local key, value = settingLine:match("^([^=]+)%s*=%s*(.*)$")
+            if key and value then
+                key = key:match("^%s*(.-)%s*$")
+                value = value:match("^%s*(.-)%s*$")
+                settings[key] = value
+            end
+        end
+
         if not line:match("^%s*%-%-") and not line:match("^%s*$") then
             local rest = line:match("^%s*%[.-%]%s*(.+)$") or line
             local id, source = rest:match("^%s*(%d+)%s*%-%s*(.+)$")
             if id and source then
                 local asset = resolve(source)
                 if asset then
-                    out[id] = asset
+                    replacements[id] = asset
                     log("loaded " .. id .. " <- " .. source)
                 end
             else
@@ -93,17 +100,22 @@ local function parse()
         end
     end
 
-    local n = 0; for _ in pairs(out) do n = n + 1 end
+    settings["Enable full descendants scan"] = settings["Enable full descendants scan"] or "false"
+    settings["Full descendants scan at child"] = settings["Full descendants scan at child"] or ""
+    settings["Enable log file"] = settings["Enable log file"] or "false"
+
+    local n = 0; for _ in pairs(replacements) do n = n + 1 end
     log(n .. " replacements ready")
-    return out
+    return replacements, settings
 end
 
--- log
 local logpath = ROOT .. "/" .. tostring(game.PlaceId) .. "_log.txt"
 local seen    = {}
 local queue   = {}
+local logEnabled = true
 
 local function enqueue(sound)
+    if not logEnabled then return end
     local id = nid(sound.SoundId)
     if id == "" or seen[id] then return end
     seen[id] = true
@@ -112,19 +124,25 @@ local function enqueue(sound)
     queue[#queue + 1] = "[" .. name .. "] " .. id
 end
 
-task.spawn(function()
-    if isfile(logpath) then
-        for id in readfile(logpath):gmatch("%] (%d+)") do seen[id] = true end
-    end
-    while true do
-        task.wait(2)
-        if #queue == 0 then continue end
-        local batch = queue; queue = {}
-        local base = isfile(logpath) and readfile(logpath):gsub("\n+$", "") or ""
-        local new  = table.concat(batch, "\n")
-        pcall(writefile, logpath, (base ~= "" and base .. "\n" or "") .. new .. "\n")
-    end
-end)
+-- damn (dum) logger
+local loggerTask
+local function startLogger()
+    if loggerTask then task.cancel(loggerTask) end
+    if not logEnabled then return end
+    loggerTask = task.spawn(function()
+        if isfile(logpath) then
+            for id in readfile(logpath):gmatch("%] (%d+)") do seen[id] = true end
+        end
+        while true do
+            task.wait(2)
+            if #queue == 0 then continue end
+            local batch = queue; queue = {}
+            local base = isfile(logpath) and readfile(logpath):gsub("\n+$", "") or ""
+            local new  = table.concat(batch, "\n")
+            pcall(writefile, logpath, (base ~= "" and base .. "\n" or "") .. new .. "\n")
+        end
+    end)
+end
 
 -- main
 local hooked = setmetatable({}, {__mode = "k"})
@@ -152,23 +170,42 @@ local function hook(sound)
     end)
 end
 
+-- scan
+local fullScanEnabled = true
+local scanChild = ""
+
 local function hookall()
     task.spawn(function()
         local function step(v)
             if v:IsA("Sound") then pcall(hook, v) end
         end
-		
-        if getinstances then
-            for _, v in ipairs(getinstances()) do step(v) end
-        else
-            for _, v in ipairs(game:GetDescendants()) do step(v) end
-        end
 
-        log("initial scan done")
+        if fullScanEnabled then
+            -- Full descendants scan
+            if getinstances then
+                for _, v in ipairs(getinstances()) do step(v) end
+            else
+                for _, v in ipairs(game:GetDescendants()) do step(v) end
+            end
+            log("initial full scan done")
+        elseif scanChild ~= "" then
+            -- Scan only the specified child subtree
+            local child = game:FindFirstChild(scanChild)
+            if child then
+                local descendants = child:GetDescendants()
+                table.insert(descendants, 1, child)
+                for _, v in ipairs(descendants) do step(v) end
+                log("initial scan of child '" .. scanChild .. "' done")
+            else
+                err("Full descendants scan at child: '" .. scanChild .. "' not found")
+            end
+        else
+            log("initial scan skipped (full scan disabled, no child specified)")
+        end
     end)
 end
 
--- api
+-- API xd
 SoundReplacer = {}
 SoundReplacer.replacements = replacements
 
@@ -198,9 +235,14 @@ end
 -- init
 if not game:IsLoaded() then game.Loaded:Wait() end
 
-local fresh = parse()
-for k, v in pairs(fresh) do replacements[k] = v end
+local freshReplacements, settings = parse()
+for k, v in pairs(freshReplacements) do replacements[k] = v end
 
+fullScanEnabled = (settings["Enable full descendants scan"]:lower() == "true")
+scanChild = settings["Full descendants scan at child"]
+logEnabled = (settings["Enable log file"]:lower() == "true")
+
+startLogger()
 hookall()
 
 game.DescendantAdded:Connect(function(v)
