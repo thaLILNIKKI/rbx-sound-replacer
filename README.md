@@ -1,6 +1,6 @@
 # sound-replacer
 
-swap roblox sounds with whatever you want. local files, urls, asset ids. simple.
+![a](https://repository-images.githubusercontent.com/1230283309/50e4a5c7-bb56-4e68-b3af-27028e2a80d1)
 
 > made by [lil2kki](https://scriptblox.com/u/lil2kki) and tested on **[xeno](https://discord.gg/xe-no)**
 
