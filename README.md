@@ -2,7 +2,7 @@
 
 swap roblox sounds with whatever you want. local files, urls, asset ids. simple.
 
-\> made by [lil2kki](https://scriptblox.com/u/lil2kki) :3
+> made by [lil2kki](https://scriptblox.com/u/lil2kki) and tested on **[xeno](https://discord.gg/xe-no)**
 
 ## what it does
 
