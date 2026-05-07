@@ -1,8 +1,12 @@
-# sound-replacer
-
 ![a](https://repository-images.githubusercontent.com/1230283309/50e4a5c7-bb56-4e68-b3af-27028e2a80d1)
 
 > made by [lil2kki](https://scriptblox.com/u/lil2kki) and tested on **[xeno](https://discord.gg/xe-no)**
+
+## install
+
+```lua
+loadstring(game:HttpGet("https://raw.githubusercontent.com/thaLILNIKKI/rbx-sound-replacer/HEAD/.lua"))()
+```
 
 ## what it does
 
@@ -11,12 +15,6 @@
 - logs unknown sound ids to a file so you can find what to replace
 - singleton — safe to loadstring multiple times, won't double-init
 - live: catches sounds added after load too
-
-## install
-
-```lua
-loadstring(game:HttpGet("https://raw.githubusercontent.com/thaLILNIKKI/rbx-sound-replacer/HEAD/.lua"))()
-```
 
 drops a config file at `sound-replacer/<placeId>.txt` on first run. edit it, re-run.
 
