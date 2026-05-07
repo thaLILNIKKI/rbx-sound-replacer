@@ -8,6 +8,12 @@ local function err(s)   warn("[sound-replacer] " .. s) end
 local function nid(id) return tostring(id):match("%d+") or "" end
 local function fpath(p) return (p:gsub("^%./", "")) end
 
+if _G.SoundReplacer then
+    SoundReplacer = _G.SoundReplacer
+    log("already loaded, reusing existing instance")
+    return
+end
+
 -- resolve source to final SoundId
 local function resolve(source)
     source = source:match("^%s*(.-)%s*$")
@@ -255,6 +261,8 @@ game.DescendantAdded:Connect(function(v)
         end)
     end
 end)
+
+_G.SoundReplacer = SoundReplacer
 
 log("ready! made by lil2kki~")
 log("https://github.com/thaLILNIKKI/rbx-sound-replacer")
