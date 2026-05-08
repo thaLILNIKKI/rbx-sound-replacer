@@ -47,9 +47,9 @@ local function parse()
         local defaultConfig = [[-- sound-replacer config for place ]] .. tostring(game.PlaceId) .. [[
 --
 -- ========== SETTINGS ==========
-Enable full descendants scan = false
-Descendants scan parent filter = 
-Enable log file = false
+-- Enable full descendants scan = false
+-- Descendants scan parent filter = 
+-- Enable log file = false
 -- ===============================
 --
 -- format:
