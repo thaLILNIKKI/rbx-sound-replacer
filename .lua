@@ -14,14 +14,11 @@ if _G.SoundReplacer then
     return
 end
 
--- resolve source to final SoundId
 local function resolve(source)
     source = source:match("^%s*(.-)%s*$")
-
     if source:match("^rbxassetid://") then
         return source
     end
-
     if source:match("^https?://") then
         local filename = ROOT .. "/" .. (source:match("[^/]+$") or "tmp.mp3")
         if not isfile(filename) then
@@ -33,14 +30,12 @@ local function resolve(source)
         if not ok then err("getcustomasset failed: " .. filename) return nil end
         return asset
     end
-
     local path = fpath(source)
     if isfile(path) then
         local ok, asset = pcall(getcustomasset, path)
         if not ok then err("getcustomasset failed: " .. path) return nil end
         return asset
     end
-
     err("can't resolve: " .. source)
     return nil
 end
@@ -53,13 +48,12 @@ local function parse()
 --
 -- ========== SETTINGS ==========
 Enable full descendants scan = false
-Full descendants scan at child = 
+Descendants scan parent filter = 
 Enable log file = false
 -- ===============================
 --
 -- format:
 --   [name] {sourceId} - {file|url|rbxassetid}
---   name is ignored, just for your info
 --
 -- examples:
 --   [lobby music]    107720742914927 - sound-replacer/lobby.mp3
@@ -67,11 +61,10 @@ Enable log file = false
 --   [round music]    135647549254666 - rbxassetid://1234567890
 ]]
         writefile(CFGPATH, defaultConfig)
-        log("created config with default settings: " .. CFGPATH)
-        -- Return empty replacements and default settings
+        log("created config: " .. CFGPATH)
         return {}, {
             ["Enable full descendants scan"] = "false",
-            ["Full descendants scan at child"] = "",
+            ["Descendants scan parent filter"] = "",
             ["Enable log file"] = "false",
         }
     end
@@ -107,7 +100,7 @@ Enable log file = false
     end
 
     settings["Enable full descendants scan"] = settings["Enable full descendants scan"] or "false"
-    settings["Full descendants scan at child"] = settings["Full descendants scan at child"] or ""
+    settings["Descendants scan parent filter"] = settings["Descendants scan parent filter"] or ""
     settings["Enable log file"] = settings["Enable log file"] or "false"
 
     local n = 0; for _ in pairs(replacements) do n = n + 1 end
@@ -130,7 +123,6 @@ local function enqueue(sound)
     queue[#queue + 1] = "[" .. name .. "] " .. id
 end
 
--- damn (dum) logger
 local loggerTask
 local function startLogger()
     if loggerTask then task.cancel(loggerTask) end
@@ -150,7 +142,6 @@ local function startLogger()
     end)
 end
 
--- main
 local hooked = setmetatable({}, {__mode = "k"})
 local replacements = {}
 
@@ -162,7 +153,6 @@ local function hook(sound)
     local id = nid(sound.SoundId)
     if replacements[id] then
         sound.SoundId = replacements[id]
-        -- log("hit " .. id .. " @ " .. sound:GetFullName())
     end
 
     sound:GetPropertyChangedSignal("SoundId"):Connect(function()
@@ -171,47 +161,62 @@ local function hook(sound)
         local rep = replacements[id_]
         if rep and sound.SoundId ~= rep then
             sound.SoundId = rep
-            -- log("rehit " .. id_ .. " @ " .. sound:GetFullName())
         end
     end)
 end
 
--- scan
+local function getInstanceByPath(path)
+    local current = game
+    for part in (path .. "."):gmatch("(.-)%.") do
+        if part == "" then continue end
+        current = current:FindFirstChild(part)
+        if not current then return nil end
+    end
+    return current
+end
+
+local function scanParents(parentsList)
+    for _, rawPath in ipairs(parentsList) do
+        local path = rawPath:match("^%s*(.-)%s*$")
+        if path ~= "" then
+            local parent = getInstanceByPath(path)
+            if parent then
+                for _, v in ipairs(parent:GetDescendants()) do
+                    if v:IsA("Sound") then pcall(hook, v) end
+                end
+                if parent:IsA("Sound") then pcall(hook, parent) end
+                log("scanned: " .. path)
+            else
+                err("parent not found: " .. path)
+            end
+        end
+    end
+end
+
 local fullScanEnabled = true
-local scanChild = ""
+local parentFilterList = {}
 
 local function hookall()
     task.spawn(function()
-        local function step(v)
-            if v:IsA("Sound") then pcall(hook, v) end
-        end
-
         if fullScanEnabled then
-            -- Full descendants scan
             if getinstances then
-                for _, v in ipairs(getinstances()) do step(v) end
+                for _, v in ipairs(getinstances()) do
+                    if v:IsA("Sound") then pcall(hook, v) end
+                end
             else
-                for _, v in ipairs(game:GetDescendants()) do step(v) end
+                for _, v in ipairs(game:GetDescendants()) do
+                    if v:IsA("Sound") then pcall(hook, v) end
+                end
             end
-            log("initial full scan done")
-        elseif scanChild ~= "" then
-            -- Scan only the specified child subtree
-            local child = game:FindFirstChild(scanChild)
-            if child then
-                local descendants = child:GetDescendants()
-                table.insert(descendants, 1, child)
-                for _, v in ipairs(descendants) do step(v) end
-                log("initial scan of child '" .. scanChild .. "' done")
-            else
-                err("Full descendants scan at child: '" .. scanChild .. "' not found")
-            end
+            log("full scan done")
+        elseif #parentFilterList > 0 then
+            scanParents(parentFilterList)
         else
-            log("initial scan skipped (full scan disabled, no child specified)")
+            log("scan skipped")
         end
     end)
 end
 
--- API xd
 SoundReplacer = {}
 SoundReplacer.replacements = replacements
 
@@ -238,14 +243,20 @@ function SoundReplacer.remove(id)
     end
 end
 
--- init
 if not game:IsLoaded() then game.Loaded:Wait() end
 
 local freshReplacements, settings = parse()
 for k, v in pairs(freshReplacements) do replacements[k] = v end
 
 fullScanEnabled = (settings["Enable full descendants scan"]:lower() == "true")
-scanChild = settings["Full descendants scan at child"]
+local filterStr = settings["Descendants scan parent filter"] or ""
+parentFilterList = {}
+for part in filterStr:gmatch("[^,]+") do
+    local trimmed = part:match("^%s*(.-)%s*$")
+    if trimmed ~= "" then
+        table.insert(parentFilterList, trimmed)
+    end
+end
 logEnabled = (settings["Enable log file"]:lower() == "true")
 
 startLogger()
