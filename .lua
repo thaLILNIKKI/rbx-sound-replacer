@@ -3,8 +3,8 @@
 local ROOT    = "sound-replacer"
 local CFGPATH = ROOT .. "/" .. tostring(game.PlaceId) .. ".txt"
 
-local function log(s)  print("[sound-replacer] " .. s) end
-local function err(s)   warn("[sound-replacer] " .. s) end
+local function log(s)  print("[sound replacer v1.1] " .. s) end
+local function err(s)   warn("[sound replacer v1.1] " .. s) end
 local function nid(id) return tostring(id):match("%d+") or "" end
 local function fpath(p) return (p:gsub("^%./", "")) end
 
