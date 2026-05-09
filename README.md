@@ -1,100 +1,61 @@
 ![a](https://repository-images.githubusercontent.com/1230283309/5d4e9f2b-7d93-41ca-b640-d3e3aca1f959)
-
-> made by [lil2kki](https://scriptblox.com/u/lil2kki) and tested on **[xeno](https://discord.gg/xe-no)**
+> made by [lil2kki](https://scriptblox.com/u/lil2kki) using ai and tested on **[xeno](https://discord.gg/xe-no)**
 
 ## install
-
 ```lua
 loadstring(game:HttpGet("https://raw.githubusercontent.com/thaLILNIKKI/rbx-sound-replacer/HEAD/.lua"))()
 ```
 
 ## what it does
 
-- replaces sounds by asset id — game-wide or scoped to a specific child
-- supports `rbxassetid://`, http urls, and local files
-- logs unknown sound ids to a file so you can find what to replace
-- singleton — safe to loadstring multiple times, won't double-init
-- live: catches sounds added after load too
-
-drops a config file at `sound-replacer/<placeId>.txt` on first run. edit it, re-run.
+replaces roblox sound ids at runtime - swap game music, sfx, or ambient sounds with your own files, urls, or other asset ids. works on newly added sounds too.
 
 ## config
 
-file lives at `sound-replacer/<placeId>.txt`
+after first run, a config file is created at:
+```
+sound-replacer/<PlaceId>.txt
+```
 
+open it and add your replacements:
 ```
 -- ========== SETTINGS ==========
-Enable full descendants scan = false
-Full descendants scan at child = Workspace
-Enable log file = true
+-- Descendants scan parent filter = Workspace,SoundService
+-- Enable log file = true
 -- ===============================
 
-[lobby music]    107720742914927 - sound-replacer/lobby.mp3
-[cream theme]    113685572917620 - https://example.com/cream.mp3
-[round music]    135647549254666 - rbxassetid://1234567890
+[lobby music]   107720742914927 - sound-replacer/lobby.mp3
+[cream theme]   113685572917620 - https://example.com/cream.mp3
+[round music]   135647549254666 - rbxassetid://1234567890
 ```
 
-**settings:**
+**format:** `[label] {soundId} - {source}`
 
-| key | values | what |
-|-----|--------|------|
-| `Enable full descendants scan` | `true` / `false` | scan every instance in game (slow but thorough) |
-| `Full descendants scan at child` | instance name | scan only that subtree, e.g. `Workspace` |
-| `Enable log file` | `true` / `false` | write unknown sound ids to `<placeId>_log.txt` |
+| source type | example |
+|---|---|
+| local file | `sound-replacer/mysong.mp3` |
+| url | `https://example.com/song.mp3` |
+| rbxassetid | `rbxassetid://1234567890` |
 
-if both scan settings are off — only catches sounds added after load. probably fine for most games.
+## settings
 
-**sources:**
+| setting | default | description |
+|---|---|---|
+| `Descendants scan parent filter` | *(empty)* | comma-separated paths to scan on load, e.g. `Workspace,SoundService` - required for existing sounds |
+| `Enable log file` | `false` | logs discovered sound ids to `<PlaceId>_log.txt` so you can find ids to replace |
 
-```
--- local file (put it in sound-replacer/ folder)
-[name]   123456 - sound-replacer/mysound.mp3
-
--- remote url (gets downloaded and cached)
-[name]   123456 - https://cdn.example.com/sound.ogg
-
--- roblox asset
-[name]   123456 - rbxassetid://987654321
-```
-
-## api
-
-after loadstring you get a global `SoundReplacer`:
+## runtime api
 
 ```lua
--- add a replacement at runtime
-SoundReplacer.add(107720742914927, "rbxassetid://1234567890")
-SoundReplacer.add(107720742914927, "sound-replacer/local.mp3")
-SoundReplacer.add(107720742914927, "https://example.com/sound.mp3")
+-- add a replacement on the fly
+SoundReplacer.add(soundId, source)
 
--- remove one
-SoundReplacer.remove(107720742914927)
-
--- raw table if you need it
-SoundReplacer.replacements  -- { ["id"] = "resolvedAsset", ... }
+-- remove a replacement
+SoundReplacer.remove(soundId)
 ```
 
-## multiple scripts
+## tips
 
-singleton pattern - second loadstring returns the existing instance immediately, no rescan, no reinit:
-
-```lua
--- script A
-loadstring(game:HttpGet("..."))()
-SoundReplacer.add(111, "rbxassetid://aaa")
-
--- script B, same session
-loadstring(game:HttpGet("..."))()  -- no-op, reuses instance
-SoundReplacer.add(222, "rbxassetid://bbb")  -- works fine
-```
-
-## find sound ids
-
-enable the log file in settings. play the game. check `sound-replacer/<placeId>_log.txt` — every unique sound id that played gets written there with its full instance path.
-
-## notes
-
-- requires an executor with `getcustomasset`, `writefile`, `readfile`, `isfile`, `makefolder`
-- http urls get downloaded once and cached locally
-- `getinstances()` used when available (gets sounds outside game tree too)
-- comments in config start with `--`, blank lines ignored
+- enable the log file first to discover what sound ids a game uses, then add your replacements
+- local files go in the `sound-replacer/` folder in your executor's workspace
+- the script is safe to re-inject - it reuses the existing instance
