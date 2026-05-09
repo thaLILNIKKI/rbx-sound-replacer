@@ -41,7 +41,7 @@ open it and add your replacements:
 
 | setting | default | description |
 |---|---|---|
-| `Descendants scan parent filter` | *(empty)* | comma-separated paths to scan on load, e.g. `Workspace,SoundService` - required for existing sounds |
+| `Descendants scan parent filter` | *(empty)* | comma-separated paths to scan on load,<br> e.g. `Workspace,SoundService` - required for existing sounds |
 | `Enable log file` | `false` | logs discovered sound ids to `<PlaceId>_log.txt` so you can find ids to replace |
 
 ## runtime api
