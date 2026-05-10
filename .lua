@@ -118,7 +118,7 @@ local function enqueue(sound)
     local name = pcall(function() return sound:GetFullName() end)
         and sound:GetFullName() or tostring(sound)
     queue[#queue + 1] = "[" .. name .. "] " .. id
-    log("SOUND: " .. "name - [" .. name .. ", id - " .. id)
+    log("SOUND: " .. "name - " .. name .. ", id - " .. id)
 end
 
 local loggerTask
